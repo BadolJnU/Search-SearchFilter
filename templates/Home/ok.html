@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+<style type="text/css">
+    .properties_table{
+       min-height: 540px;
+       font-size: 14px;
+    }
+    </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <section class="site_filter">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-sm-4 col-4">
+                    <div class="form-group">
+                        <label for="username">User Name</label>
+                        <select class="form-control" id="loginuser" 
+                            url = "{%url 'home:get_loginuser' %}">
+                        </select>
+                    </div>
+                </div>
+                <div class="col-sm-4 col-4">
+                    <div class="form-group">
+                        <label for="keyword">Keyword</label>
+                        <select class="form-control" id="keyword" 
+                            url = "{%url 'home:get_keyword' %}">
+                        </select>
+                    </div>
+                </div>
+                <div class="col-sm-4 col-4">
+                    <div class="form-group">
+                        <label for="sorting">Sort By</label>
+                        <select class="form-control" id="sort_by">
+                            <option selected="true"
+                            disabled="disabled" value = "none">Choose option</option>
+                            <option value='loginuser'>Loginuser</option>
+                            <option value='keyword'>Keyword</option>
+                            <option value='searchdate'>Searchdate</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-1 col-2">
+                    <label for="startdate">Start Date</label>
+                    <div class="form-group">
+                        <input type="date" id="startdate" placeholder="Start Date" >
+                    </div>
+                </div>
+                <div class="col-sm-2 col-2 ml-3">
+                    <label for="enddate">End Date</label>
+                    <div class="form-group">
+                        <input type="date" id="enddate" >
+                    </div>
+                </div>
+                <div class="col-sm-1 col-1">
+                    <div class="row justify-content-center align-self-center"
+                        style="color:white; margin-top:30px;">
+                        <a class="btn btn-secondary" id="display_all">Display all</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <br />
+    
+    <section>
+        <div class="container-fluid">
+            <div id = "result-count" class="text-right">
+                <span class='font-weight-bold'></span> results found.
+            </div>
+            <div class="row properties_table justify-content-center">
+                <div id = "no_results">
+                    <h5>No results found</h5>
+                </div>
+                <table class="table table-bordered table-responsive table-hover table-striped"
+                 id="list_data" data-toggle="table" url = "{% url 'home:listing' %}">
+                    <thead>
+                        <tr>
+                            <th data-field="loginuser">User Name</th>
+                            <th data-field="keyword">Keyword</th>
+                            <th data-field="searchdate">Search Date</th>
+                            <th data-field="searchresult">Search Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listing">
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+    </section>
+
+    <script type="text/javascript">
+        // variable that keeps all the filter information
+        var send_data = {}
+        $(document).ready(function () {
+            //reset all parameters on page load
+            resetFilter();
+            //bring all data without any filters
+            getAPIData();
+            //get all the username from database via
+            //ajax call into username select options
+            getLoginuser();
+            //get all the searchdate from this range
+            //getStartdate();
+            //on selecting the username option
+            $('#loginuser').on('change', function () {
+                //since keyword is dependent on username
+                $("#keyword").val("all");
+                send_data['keyword'] = '';
+                //update the selected country
+                if (this.value == "all") {
+                    send_date['loginuser'] = "";
+                }
+                else {
+                    send_data['loginuser'] = this.value;
+                }
+                getKeyword(this.value);
+                //get api data of updated filters
+                getAPIData();
+            });
+            //on filtering the keyword input
+            $("#keyword").on('change', function(){
+                if(this.value == "all"){
+                    send_data['keyword'] = "";
+                }
+                else{
+                    send_data['keyword'] = this.value;
+                }
+                getAPIData();
+            });
+            //on filtering startdate
+            $("#startdate").on('change', function(){
+                send_data['startdate'] = this.value;
+                getAPIData();
+            })
+            //on filtering enddate
+            $("#enddate").on('change', function(){
+                
+                send_data['enddate'] = this.value;
+                getAPIData();
+            })
+            $('#sort_by').on('change', function () {
+                send_data['sort_by'] = this.value;
+                getAPIData();
+            });
+
+            //display all result after reset the filter
+            $("#display_all").click(function () {
+                resetFilter();
+                getAPIData();
+            })
+        })
+        //function that reset all filters
+        function resetFilter() {
+            $("#loginuser").val("all");
+
+            send_data['loginuser'] = '';
+            send_data['keyword'] = '';
+            send_data['startdate'] = '';
+            send_data['format'] = 'json';
+        }
+        function putTableData(result) {
+            // creating table row for each result and
+
+            // pushing to the html content of table body of listing table
+
+            let row;
+            console.log(result)
+            if (result.length > 0) {
+                $("#no_results").hide();
+                $("#list_data").show();
+                $("#listing").html("");
+                $.each(result, function (a, b) {
+                    row = "<tr> <td>" + b.loginuser + "</td>" +
+                        "<td>" + b.keyword + "</td>" +
+                        "<td>" + b.searchdate + "</td>" +
+                        "<td>" + b.searchresult + "</td></tr>"
+                    $("#listing").append(row);
+                });
+            }
+            else {
+                // if no result found for the given filter, then display no result
+
+                $("#no_results h5").html("No results found");
+                $("#list_data").hide();
+                $("#no_results").show();
+            }
+
+        
+            $("#result-count span").html(result["count"]);
+        }
+        function getAPIData() {
+            let url = $('#list_data').attr("url")
+            $.ajax({
+                method: 'GET',
+                url: url,
+                data: send_data,
+                beforeSend: function () {
+                    $("#no_results h5").html("Loading data...");
+                },
+                success: function (result) {
+                    putTableData(result);
+                },
+                error: function (response) {
+                    $("#no_results h5").html("Something went wrong");
+                    $("#list_data").hide();
+                }
+            });
+        }
+
+        function getLoginuser() {
+            // fill the options of countries by making ajax call
+
+            // obtain the url from the Loginuser select input attribute
+
+            let url = $("#loginuser").attr("url");
+
+            // makes request to getLoginuser(request) method in views
+
+            $.ajax({
+                method: 'GET',
+                url: url,
+                data: {},
+                success: function (result) {
+
+                    loginuser_option = "<option value='all' selected>All Loginuser</option>";
+                    $.each(result["loginuser"], function (a, b) {
+                        loginuser_option += "<option>" + b + "</option>"
+                    });
+                    $("#loginuser").html(loginuser_option)
+                },
+                error: function (response) {
+                    console.log(response)
+                }
+            });
+        }
+        function getKeyword(loginuser){
+            let url = $("#keyword").attr("url");
+
+            let keyword_option = "<option value = 'all' selected> All Keyword</option>";
+            $.ajax({
+                method: 'GET',
+                url: url,
+                data: {
+                    "loginuser":loginuser
+                },
+                success: function (result) {
+                    console.log(result)
+                    $.each(result["keyword"], function (a, b) {
+                        keyword_option += "<option>" + b + "</option>"
+                    });
+                    $("#keyword").html(keyword_option)
+                },
+                error: function(response){
+                    console.log(response)
+                }
+            });
+        }
+    </script>
+</body>
+</html>
