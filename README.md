@@ -16,3 +16,7 @@ Installing
   2. Inside the root folder, run pipenv install to install dependencies
   3. Run pipenv shell to start working in the virtual environment
   4. Before running ./manage.py runserver, make sure you apply the database migrations (./manage.py migrate)
+  
+  There are four pages in this project, in home page there is a navbar, where user can signup, login and search a blog post from database by searching a keyword.
+  in searchhistory page where filter the search history
+  
